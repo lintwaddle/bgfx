@@ -5565,6 +5565,18 @@ namespace bgfx { namespace gl
 		m_id = (GLuint)_ptr;
 	}
 
+  static uint32_t ceil_p2 (uint32_t _v)
+  {
+    _v = _v - 1;
+    _v = _v | (_v >>  1);
+    _v = _v | (_v >>  2);
+    _v = _v | (_v >>  4);
+    _v = _v | (_v >>  8);
+    _v = _v | (_v >> 16);
+
+    return _v + 1;
+  }
+
 	void TextureGL::update(uint8_t _side, uint8_t _mip, const Rect& _rect, uint16_t _z, uint16_t _depth, uint16_t _pitch, const Memory* _mem)
 	{
 		const uint32_t bpp = bimg::getBitsPerPixel(bimg::TextureFormat::Enum(m_textureFormat) );
@@ -5602,7 +5614,11 @@ namespace bgfx { namespace gl
 		}
 		else if (unpackRowLength)
 		{
-			GL_CHECK(glPixelStorei(GL_UNPACK_ROW_LENGTH, srcpitch*8/bpp) );
+      const uint32_t rowLength = srcpitch * 8 / bpp;
+      const uint32_t alignment = srcpitch - (rowLength * bpp / 8);
+      const uint32_t round = ceil_p2 (alignment + 1);
+			GL_CHECK(glPixelStorei(GL_UNPACK_ROW_LENGTH, rowLength) );
+      GL_CHECK(glPixelStorei(GL_UNPACK_ALIGNMENT, round) );
 		}
 
 		if (compressed
@@ -5666,6 +5682,7 @@ namespace bgfx { namespace gl
 		&&  unpackRowLength)
 		{
 			GL_CHECK(glPixelStorei(GL_UNPACK_ROW_LENGTH, 0) );
+      GL_CHECK(glPixelStorei(GL_UNPACK_ALIGNMENT, 1) );
 		}
 
 		if (NULL != temp)
